@@ -80,7 +80,7 @@ void read_tunnel(uv_poll_t *handle, int status, int events) {
         return;
     }
 
-    if ((res = read(vpn->tun->fd, data, 2048)) == -1) {
+    if ((res = tun_read(vpn->tun, data, 2048)) == -1) {
         perror("error reading");
         return;
     }
