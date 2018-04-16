@@ -7,17 +7,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <poll.h>
-
-#include <arpa/inet.h>
-#include <linux/if.h>
-#include <linux/if_tun.h>
-#include <linux/socket.h>
-#include <sys/ioctl.h>
-#include <sys/wait.h>
-
 struct sent_data_t {
     uv_buf_t *data;
     size_t idx;
