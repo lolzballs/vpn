@@ -6,12 +6,19 @@ pkg_check_modules(LIBUV REQUIRED libuv)
 
 set(CMAKE_C_STANDARD 99)
 
+IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(
+        PLATFORM_SRC 
+        tun_linux.c
+        util_linux.c
+    )
+endif()
+
 add_executable(
     vpn
     main.c
-    tun_linux.c
     util.c
-    util_linux.c
+    ${PLATFORM_SRC}
 )
 
 target_link_libraries(
