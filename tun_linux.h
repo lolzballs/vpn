@@ -1,3 +1,6 @@
+#ifndef tun_linux_h
+#define tun_linux_h
+
 #include <uv.h>
 
 #include <unistd.h>
@@ -27,3 +30,4 @@ struct tun_t {
     int fd;
 };
 
+#endif

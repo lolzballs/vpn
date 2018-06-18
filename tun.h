@@ -1,3 +1,6 @@
+#ifndef tun_h
+#define tun_h
+
 #ifdef __linux__
 #include "tun_linux.h"
 #endif
@@ -16,4 +19,6 @@ int tun_addr(struct tun_t *tun, char *ip);
 int tun_write(struct tun_t *tun, const uint8_t *buf, size_t len);
 int tun_read(struct tun_t *tun, uint8_t *buf, size_t len);
 uv_poll_t* tun_handle(struct tun_t *tun);
+
+#endif
 

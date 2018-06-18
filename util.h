@@ -1,3 +1,6 @@
+#ifndef util_h
+#define util_h
+
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -15,3 +18,6 @@ void shared_ptr_release(struct shared_ptr_t *ptr);
 
 
 bool sockaddr_cmp(const struct sockaddr *a, const struct sockaddr *b);
+
+#endif
+
