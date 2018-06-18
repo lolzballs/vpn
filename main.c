@@ -113,8 +113,7 @@ void read_socket(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const str
     if (nread < 0) {
         fprintf(stderr, "error reading udp socket: %s\n", uv_strerror(nread));
         uv_close((uv_handle_t*) handle, NULL);
-        free(buf->base);
-        return;
+        goto ret;
     }
 
     // Nothing to read
