@@ -1,4 +1,4 @@
-#include "ipv4.h"
+#include "packethdr.h"
 #include "tun.h"
 #include "util.h"
 #include "trie.h"
@@ -36,11 +36,18 @@ struct vpn_t {
     };
 };
 
-ssize_t clients_add(struct clients_t *clients) {
+void clients_add(struct clients_t *clients, const struct sockaddr *sa) {
     struct conn_t *new = malloc(sizeof(struct conn_t));
 
-    clients->clients[clients->len] = new;
-    return clients->len++;
+    clients->clients[clients->len++] = new;
+    memcpy(&new->sa, sa, sizeof(struct sockaddr));
+
+    if (sa->sa_family == AF_INET) {
+        // struct sockaddr_in *sa4 = (struct sockaddr_in*) sa;
+        trie_map(clients->trie, 0x0200450A, 32, new);
+    } else {
+        fprintf(stderr, "ipv6 is currently unsupported\n");
+    }
 }
 
 void alloc_buf(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
@@ -93,22 +100,19 @@ void read_tunnel(uv_poll_t *handle, int status, int events) {
 
     if (vpn->is_server) {
         struct clients_t clients = vpn->clients;
-        struct shared_ptr_t *data_ptr = shared_ptr_wrap(data, clients.len);
-        // TODO: Replace with trie lookup
-        for (ssize_t i = 0; i < clients.len; i++) {
-            struct conn_t *client = clients.clients[i];
-            
-            struct ipv4hdr *hdr = (struct ipv4hdr*) data;
-            uint32_t client_addr = ((struct sockaddr_in*) client)->sin_addr.s_addr;
-            // TODO: support ipv6
-            printf("%X and %X\n", client_addr, hdr->daddr);
-            if (client->sa.sa_family == AF_INET && client_addr == hdr->daddr) {
-                send_req = malloc(sizeof(uv_udp_send_t));
-                send_req->data = data_ptr;
 
-                if (uv_udp_send(send_req, vpn->handle, &buf, 1, &client->sa, socket_sent_server) < 0) {
-                    fprintf(stderr, "error sending to client %ld, %s\n", i, uv_strerror(res));
-                }
+        struct tunhdr_t *tunhdr = (struct tunhdr_t*) data;
+        if (tunhdr->proto != ETH_P_IPv4)
+            return;
+
+        struct ipv4hdr_t *hdr = (struct ipv4hdr_t*) (data + sizeof(struct tunhdr_t));
+        struct conn_t *client = trie_find(clients.trie, hdr->daddr, 32);
+        if (client != NULL) {
+            send_req = malloc(sizeof(uv_udp_send_t));
+            send_req->data = data;
+
+            if (uv_udp_send(send_req, vpn->handle, &buf, 1, &client->sa, socket_sent_server) < 0) {
+                fprintf(stderr, "error sending to client, %s\n", uv_strerror(res));
             }
         }
     } else {
@@ -147,8 +151,7 @@ void read_socket(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const str
         }
 
         char buf[256];
-        ssize_t idx = clients_add(clients);
-        memcpy(&clients->clients[idx]->sa, addr, sizeof(struct sockaddr));
+        clients_add(clients, addr);
         uv_ip4_name((struct sockaddr_in*) addr, buf, 256); 
         printf("new client: %s\n", buf);
         printf("total clients: %ld\n", clients->len);
@@ -188,6 +191,7 @@ int start_server(struct sockaddr_in server_addr, char *ip) {
         .clients = {
             .clients = clients,
             .len = 0,
+            .trie = trie_new(),
         },
     };
 

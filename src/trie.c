@@ -23,7 +23,7 @@ static int map_client(struct node_t **n, uint32_t address, uint32_t mask, struct
             return -1;
 
         int res = -1;
-        if (address & (1 << depth)) {
+        if (address & (1 << (31 - depth))) {
             res = map_client(&((*n)->ch[1]), address, mask, client, depth + 1);
         } else {
             res = map_client(&((*n)->ch[0]), address, mask, client, depth + 1);
@@ -42,7 +42,7 @@ static struct conn_t *find_client(struct node_t *n, uint32_t address, uint32_t m
     if (depth == mask)
         return n->client;
     else {
-        if (address & (1 << depth)) {
+        if (address & (1 << (31 - depth))) {
             return find_client(n->ch[1], address, mask, depth + 1);
         } else {
             return find_client(n->ch[0], address, mask, depth + 1);
@@ -63,7 +63,7 @@ static int unmap_client(struct node_t **n, uint32_t address, uint32_t mask, size
         return 0;
     } else {
         int res = -1;
-        if (address & (1 << depth)) {
+        if (address & (1 << (31 - depth))) {
             res = unmap_client(&((*n)->ch[1]), address, mask, depth + 1);
         } else {
             res = unmap_client(&((*n)->ch[0]), address, mask, depth + 1);

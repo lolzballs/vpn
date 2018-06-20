@@ -23,6 +23,7 @@ add_executable(
     src/util.h
     src/trie.c
     src/trie.h
+    src/packethdr.h
     ${PLATFORM_SRC}
 )
 

@@ -19,7 +19,7 @@ static int unmap_client(struct node_t **n, uint32_t address, uint32_t mask, size
 
 struct node_t *trie_new();
 int trie_map(struct node_t *t, uint32_t address, uint32_t mask, struct conn_t *client);
-struct client_t *trie_find(struct node_t *t, uint32_t address, uint32_t mask);
+struct conn_t *trie_find(struct node_t *t, uint32_t address, uint32_t mask);
 int trie_free(struct node_t *t);
 
 #endif
