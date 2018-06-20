@@ -1,6 +1,7 @@
 #include "ipv4.h"
 #include "tun.h"
 #include "util.h"
+#include "trie.h"
 
 #include <string.h>
 #include <stdbool.h>
@@ -21,6 +22,8 @@ struct conn_t {
 struct clients_t {
     struct conn_t **clients;
     ssize_t len;
+
+    struct node_t *trie;
 };
 
 struct vpn_t {

@@ -8,7 +8,7 @@ static struct node_t *create_node() {
     return n;
 }
 
-static int map_client(struct node_t **n, uint32_t address, uint32_t mask, struct client_t *client, size_t depth) {
+static int map_client(struct node_t **n, uint32_t address, uint32_t mask, struct conn_t *client, size_t depth) {
     if (*n == NULL)
         *n = create_node();
 
@@ -35,7 +35,7 @@ static int map_client(struct node_t **n, uint32_t address, uint32_t mask, struct
     }
 }
 
-static struct client_t *find_client(struct node_t *n, uint32_t address, uint32_t mask, size_t depth) {
+static struct conn_t *find_client(struct node_t *n, uint32_t address, uint32_t mask, size_t depth) {
     if (n == NULL)
         return NULL;
 
@@ -79,14 +79,14 @@ struct node_t *trie_new() {
     return create_node();
 }
 
-int trie_map(struct node_t *t, uint32_t address, uint32_t mask, struct client_t *client) {
+int trie_map(struct node_t *t, uint32_t address, uint32_t mask, struct conn_t *client) {
     if (mask > 32)
         return -1;
 
     return map_client(&t, address, mask, client, 0);
 }
 
-struct client_t *trie_find(struct node_t *t, uint32_t address, uint32_t mask) {
+struct conn_t *trie_find(struct node_t *t, uint32_t address, uint32_t mask) {
     if (mask > 32)
         return NULL;
 

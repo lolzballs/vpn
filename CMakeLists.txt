@@ -10,19 +10,19 @@ find_package(LibUV REQUIRED)
 IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(
         PLATFORM_SRC 
-        tun_linux.c
-        tun_linux.h
-        util_linux.c
+        src/tun_linux.c
+        src/tun_linux.h
+        src/util_linux.c
     )
 endif()
 
 add_executable(
     vpn
-    main.c
-    util.c
-    util.h
-    trie.c
-    trie.h
+    src/main.c
+    src/util.c
+    src/util.h
+    src/trie.c
+    src/trie.h
     ${PLATFORM_SRC}
 )
 
@@ -35,3 +35,4 @@ target_include_directories(
         PUBLIC
         ${LIBUV_INCLUDE_DIRS}
 )
+
