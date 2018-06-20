@@ -1,5 +1,5 @@
-#ifndef ipv4_h
-#define ipv4_h
+#ifndef packethdr_h
+#define packethdr_h
 
 #include <stdint.h>
 
