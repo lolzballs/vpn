@@ -11,6 +11,7 @@ IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(
         PLATFORM_SRC 
         tun_linux.c
+        tun_linux.h
         util_linux.c
     )
 endif()
@@ -19,6 +20,9 @@ add_executable(
     vpn
     main.c
     util.c
+    util.h
+    trie.c
+    trie.h
     ${PLATFORM_SRC}
 )
 

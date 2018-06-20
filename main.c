@@ -1,3 +1,4 @@
+#include "ipv4.h"
 #include "tun.h"
 #include "util.h"
 
@@ -90,13 +91,21 @@ void read_tunnel(uv_poll_t *handle, int status, int events) {
     if (vpn->is_server) {
         struct clients_t clients = vpn->clients;
         struct shared_ptr_t *data_ptr = shared_ptr_wrap(data, clients.len);
+        // TODO: Replace with trie lookup
         for (ssize_t i = 0; i < clients.len; i++) {
-            send_req = malloc(sizeof(uv_udp_send_t));
-            send_req->data = data_ptr;
-
             struct conn_t *client = clients.clients[i];
-            if (uv_udp_send(send_req, vpn->handle, &buf, 1, &client->sa, socket_sent_server) < 0) {
-                fprintf(stderr, "error sending to client %ld, %s\n", i, uv_strerror(res));
+            
+            struct ipv4hdr *hdr = (struct ipv4hdr*) data;
+            uint32_t client_addr = ((struct sockaddr_in*) client)->sin_addr.s_addr;
+            // TODO: support ipv6
+            printf("%X and %X\n", client_addr, hdr->daddr);
+            if (client->sa.sa_family == AF_INET && client_addr == hdr->daddr) {
+                send_req = malloc(sizeof(uv_udp_send_t));
+                send_req->data = data_ptr;
+
+                if (uv_udp_send(send_req, vpn->handle, &buf, 1, &client->sa, socket_sent_server) < 0) {
+                    fprintf(stderr, "error sending to client %ld, %s\n", i, uv_strerror(res));
+                }
             }
         }
     } else {
@@ -252,3 +261,4 @@ usage:
 
     return 0;
 }
+
