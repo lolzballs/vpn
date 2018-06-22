@@ -16,13 +16,11 @@ enum config_mode_t {
     CONFIG_MODE_SERVER = 1
 };
 
-static struct config_t {
+struct config_t {
     enum config_mode_t mode;
     uint32_t timeout;
     char ip[64];
     struct sockaddr_in addr;
-} config = {
-    .mode = CONFIG_MODE_UNSET,
 };
 
 static struct option arguments[] = {
@@ -268,6 +266,9 @@ int main(int argc, char *argv[]) {
     int res, ipind;
     char ch;
     struct sockaddr_in server_addr;
+    struct config_t config = {
+        .mode = CONFIG_MODE_UNSET
+    };
 
     // TODO: evaluate safety of this
     while ((ch = getopt_long(argc, argv, "cst:", arguments, NULL)) != -1) {
