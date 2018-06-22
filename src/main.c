@@ -8,6 +8,27 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <getopt.h>
+
+enum config_mode_t {
+    CONFIG_MODE_UNSET = -1,
+    CONFIG_MODE_CLIENT = 0,
+    CONFIG_MODE_SERVER = 1
+};
+
+static struct config_t {
+    enum config_mode_t mode;
+    uint32_t timeout;
+    char ip[64];
+    struct sockaddr_in addr;
+} config = {
+    .mode = CONFIG_MODE_UNSET,
+};
+
+static struct option arguments[] = {
+    { "timeout", required_argument, NULL, 't'},
+    { 0 }
+};
 
 struct sent_data_t {
     uv_buf_t *data;
@@ -178,7 +199,7 @@ int create_tun(uv_loop_t *loop, struct vpn_t *vpn, struct tun_t *tun, char *ip) 
     return 0;
 }
 
-int start_server(struct sockaddr_in server_addr, char *ip) {
+int start_server(struct config_t config) {
     int res;
     uv_loop_t *loop = uv_default_loop();
     uv_udp_t udp_sock;
@@ -195,7 +216,7 @@ int start_server(struct sockaddr_in server_addr, char *ip) {
         },
     };
 
-    if (create_tun(loop, &vpn, &tun, ip) == -1) {
+    if (create_tun(loop, &vpn, &tun, config.ip) == -1) {
         return -1;
     }
 
@@ -203,7 +224,7 @@ int start_server(struct sockaddr_in server_addr, char *ip) {
         fprintf(stderr, "failed to init udp socket: %s\n", uv_strerror(res));
         return res;
     }
-    if ((res = uv_udp_bind(&udp_sock, (struct sockaddr*) &server_addr, 0)) < 0) {
+    if ((res = uv_udp_bind(&udp_sock, (struct sockaddr*) &config.addr, 0)) < 0) {
         fprintf(stderr, "failed to bind udp socket: %s\n", uv_strerror(res));
         return res;
     }
@@ -214,7 +235,7 @@ int start_server(struct sockaddr_in server_addr, char *ip) {
     return uv_run(loop, UV_RUN_DEFAULT);
 }
 
-int start_client(struct sockaddr_in server_addr, char *ip) {
+int start_client(struct config_t config) {
     int res;
     uv_loop_t *loop = uv_default_loop();
     uv_udp_t udp_sock;
@@ -224,11 +245,11 @@ int start_client(struct sockaddr_in server_addr, char *ip) {
         .tun = &tun,
         .handle = &udp_sock,
         .server = {
-            .sa = *((struct sockaddr*) &server_addr),
+            .sa = *((struct sockaddr*) &config.addr),
         }
     };
 
-    if (create_tun(loop, &vpn, &tun, ip) == -1) {
+    if (create_tun(loop, &vpn, &tun, config.ip) == -1) {
         return -1;
     }
 
@@ -244,28 +265,56 @@ int start_client(struct sockaddr_in server_addr, char *ip) {
 }
 
 int main(int argc, char *argv[]) {
-    int res;
+    int res, ipind;
+    char ch;
     struct sockaddr_in server_addr;
 
-    if (argc != 5) {
-usage:
-        printf("usage: %s {-s|-c} <tun_ip> <ip> <port>\n", argv[0]);
-        return -1;
+    // TODO: evaluate safety of this
+    while ((ch = getopt_long(argc, argv, "cst:", arguments, NULL)) != -1) {
+        switch (ch) {
+            case 's':
+                config.mode = CONFIG_MODE_SERVER;
+                break;
+            case 'c':
+                config.mode = CONFIG_MODE_CLIENT;
+                break;
+            case 't':
+                config.timeout = strtol(optarg, NULL, 10);
+                if (errno != 0) {
+                    goto usage;
+                }
+                break;
+            default:
+                goto usage;
+        }
     }
 
-    if ((res = uv_ip4_addr(argv[3], atoi(argv[4]), &server_addr)) < 0) {
+    ipind = optind;
+
+    if (config.mode == CONFIG_MODE_UNSET)
+        goto usage;
+
+    if (argc != ipind + 3)
+        goto usage;
+
+    if ((res = uv_ip4_addr(argv[ipind + 1], atoi(argv[ipind + 2]), &server_addr)) < 0) {
         fprintf(stderr, "specified ip invalid: %s\n", uv_strerror(res));
         return -1;
     }
 
-    if (!strncmp(argv[1], "-s", 2)) {
-        return start_server(server_addr, argv[2]);
-    } else if (!strncmp(argv[1], "-c", 2)) {
-        return start_client(server_addr, argv[2]);
-    } else {
-        goto usage;
+    config.addr = server_addr;
+    strncpy(config.ip, argv[ipind], 64);
+
+    if (config.mode == CONFIG_MODE_SERVER) {
+        return start_server(config);
+    } else if (config.mode == CONFIG_MODE_CLIENT) {
+        return start_client(config);
     }
 
     return 0;
+    
+usage:
+    printf("usage: %s [-t timeout] {-s|-c} <tun_ip> <ip> <port>\n", argv[0]);
+    return -1;
 }
 
