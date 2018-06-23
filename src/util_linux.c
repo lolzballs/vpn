@@ -1,6 +1,8 @@
 #include "util.h"
 
+#include <string.h>
 #include <linux/if.h>
+#include <uv.h>
 
 bool sockaddr_cmp(const struct sockaddr *a, const struct sockaddr *b) {
     if (a->sa_family != b->sa_family) {
@@ -12,4 +14,22 @@ bool sockaddr_cmp(const struct sockaddr *a, const struct sockaddr *b) {
         }
     }
     return true;
+}
+
+int cidr_parse(char *cidr, struct sockaddr *a, uint32_t *mask) {
+    int res;
+
+    char *mask_str = strtok(cidr, "/");
+    *mask = strtol(mask_str, NULL, 10);
+    if (errno != 0) {
+        fprintf(stderr, "invalid cidr specified\n");
+        return -1;
+    }
+
+    if ((res = uv_ip4_addr(cidr, 0, (struct sockaddr_in*) a)) < 0) {
+        fprintf(stderr, "specified ip invalid: %s\n", uv_strerror(res));
+        return -1;
+    }
+
+    return 0;
 }
