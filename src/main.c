@@ -76,9 +76,9 @@ void clients_init(struct clients_t *clients) {
 
 void clients_connect(struct clients_t *clients, uint32_t id, const struct sockaddr *sa) {
     // TODO: Make this safe and replace incrementing ids
-    struct conn_t client = clients->clients[id];
-    client.connected = true;
-    memcpy(&client.udp_addr, sa, sizeof(struct sockaddr));
+    struct conn_t *client = &clients->clients[id];
+    client->connected = true;
+    memcpy(&client->udp_addr, sa, sizeof(struct sockaddr));
 
     if (sa->sa_family != AF_INET) {
         // struct sockaddr_in *sa4 = (struct sockaddr_in*) sa;
@@ -88,8 +88,8 @@ void clients_connect(struct clients_t *clients, uint32_t id, const struct sockad
 
 void clients_disconnect(struct clients_t *clients, uint32_t id) {
     // TODO: same as in clients_connect
-    struct conn_t client = clients->clients[id];
-    client.connected = false;
+    struct conn_t *client = &clients->clients[id];
+    client->connected = false;
 
     printf("client %d disconnect\n", id);
 }
@@ -97,13 +97,13 @@ void clients_disconnect(struct clients_t *clients, uint32_t id) {
 void timeout_check(uv_timer_t *handle) {
     printf("timeout check\n");
     struct vpn_t *vpn = handle->data;
-    struct clients_t clients = vpn->clients;
+    struct clients_t *clients = &vpn->clients;
     time_t now = time(NULL);
 
-    for (ssize_t i = 0; i < clients.len; i++) {
-        if (now - clients.clients[i].last_packet >= vpn->config.timeout &&
-                clients.clients[i].connected) {
-            clients_disconnect(&clients, i);
+    for (ssize_t i = 0; i < clients->len; i++) {
+        if (now - clients->clients[i].last_packet >= vpn->config.timeout &&
+                clients->clients[i].connected) {
+            clients_disconnect(clients, i);
         }
     }
 }
@@ -158,14 +158,14 @@ void read_tunnel(uv_poll_t *handle, int status, int events) {
     buf.len = res;
 
     if (vpn->config.mode == CONFIG_MODE_SERVER) {
-        struct clients_t clients = vpn->clients;
+        struct clients_t *clients = &vpn->clients;
 
         struct tunhdr_t *tunhdr = (struct tunhdr_t*) data;
         if (tunhdr->proto != ETH_P_IPv4)
             return;
 
         struct ipv4hdr_t *hdr = (struct ipv4hdr_t*) (data + sizeof(struct tunhdr_t));
-        struct conn_t *client = trie_find(clients.trie, hdr->daddr, 32);
+        struct conn_t *client = trie_find(clients->trie, hdr->daddr, 32);
         if (client != NULL) {
             send_req = malloc(sizeof(uv_udp_send_t));
             send_req->data = data;
@@ -212,6 +212,9 @@ void read_socket(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const str
     tun_write(vpn->tun, (uint8_t*) payload, nread);
 
     if (vpn->config.mode == CONFIG_MODE_SERVER) {
+        if (id >= vpn->clients.len)
+            goto ret;
+
         if (!vpn->clients.clients[id].connected) {
             char buf[256];
             clients_connect(&vpn->clients, id, addr);
