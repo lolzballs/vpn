@@ -19,11 +19,14 @@ endif()
 add_executable(
     vpn
     src/main.c
+    src/vpn.c
+    src/vpn.h
     src/util.c
     src/util.h
     src/trie.c
     src/trie.h
     src/packethdr.h
+    src/config.h
     ${PLATFORM_SRC}
 )
 
