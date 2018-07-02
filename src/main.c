@@ -3,6 +3,7 @@
 #include "util.h"
 #include "trie.h"
 #include "vpn.h"
+#include "config.h"
 
 #include <string.h>
 #include <stdbool.h>
@@ -19,6 +20,10 @@ int main(int argc, char *argv[]) {
         .mode = CONFIG_MODE_UNSET,
         .timeout = 10,
     };
+
+    if (config_parse(&config, "vpn.conf") == -1) {
+        goto usage;
+    }
 
     // TODO: evaluate safety of this
     while ((ch = getopt_long(argc, argv, "cst:", arguments, NULL)) != -1) {
