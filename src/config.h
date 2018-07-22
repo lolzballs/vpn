@@ -10,8 +10,7 @@
 struct config_client_t {
     // TODO: replace id with client key
     uint32_t id;
-    union vpn_sockaddr addr;
-    char allowed_ip[64];
+    union vpn_sockaddr_t allowed_ips;
 };
 
 enum config_mode_t {
@@ -23,13 +22,8 @@ enum config_mode_t {
 struct config_t {
     enum config_mode_t mode;
     uint32_t timeout;
-    char ip[64];
-    struct sockaddr_in addr;
-};
-
-static struct option arguments[] = {
-    { "timeout", required_argument, NULL, 't'},
-    { 0 }
+    struct vpn_addrrange_t addr;
+    union vpn_sockaddr_t listen_addr;
 };
 
 int config_parse(struct config_t *config, char *filename);

@@ -30,24 +30,6 @@ int tun_close(struct tun_t *tun) {
     return close(tun->fd);
 }
 
-int tun_up(struct tun_t *tun) {
-    int res = SAFE_SYSTEM("/bin/ip", "link", "set", tun->ifr.ifr_name, "up");
-    if (res != 0) {
-        fputs("error occured putting tun up\n", stderr);
-        return -1;
-    }
-    return 0;
-}
-
-int tun_addr(struct tun_t *tun, char *ip) {
-    int res = SAFE_SYSTEM("/bin/ip", "addr", "add", ip, "dev", tun->ifr.ifr_name);
-    if (res != 0) {
-        fputs("error occured assigning ip address to tun\n", stderr);
-        return -1;
-    }
-    return 0;
-}
-
 int tun_write(struct tun_t *tun, const uint8_t *buf, size_t len) {
     return write(tun->fd, buf, len);
 }

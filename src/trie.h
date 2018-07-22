@@ -1,6 +1,8 @@
 #ifndef trie_h
 #define trie_h
 
+#include "util.h"
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -18,7 +20,7 @@ static struct conn_t *find_client(struct node_t *n, uint32_t address, uint32_t m
 static int unmap_client(struct node_t **n, uint32_t address, uint32_t mask, size_t depth);
 
 struct node_t *trie_new();
-int trie_map(struct node_t *t, uint32_t address, uint32_t mask, struct conn_t *client);
+int trie_map(struct node_t *t, struct vpn_addrrange_t allowed_ips, struct conn_t *client);
 struct conn_t *trie_find(struct node_t *t, uint32_t address, uint32_t mask);
 int trie_free(struct node_t *t);
 

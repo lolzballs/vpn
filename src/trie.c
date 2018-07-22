@@ -1,5 +1,7 @@
 #include "trie.h"
 
+#include <assert.h>
+
 static struct node_t *create_node() {
     struct node_t *n = malloc(sizeof(struct node_t));
     n->client = NULL;
@@ -79,11 +81,13 @@ struct node_t *trie_new() {
     return create_node();
 }
 
-int trie_map(struct node_t *t, uint32_t address, uint32_t mask, struct conn_t *client) {
-    if (mask > 32)
+int trie_map(struct node_t *t, struct vpn_addrrange_t allowed_ips, struct conn_t *client) {
+    if (allowed_ips.mask > 32)
         return -1;
 
-    return map_client(&t, address, mask, client, 0);
+    // TODO: support more than ipv4
+    assert(allowed_ips.addr.s4.sin_family == AF_INET);
+    return map_client(&t, allowed_ips.addr.s4.sin_addr.s_addr, allowed_ips.mask, client, 0);
 }
 
 struct conn_t *trie_find(struct node_t *t, uint32_t address, uint32_t mask) {

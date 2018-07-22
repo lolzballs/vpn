@@ -7,28 +7,31 @@
 #include <string.h>
 
 void clients_init(struct clients_t *clients) {
+    int res;
+
     // TODO: use configuration file, entire function is not production ready!
     clients->clients = malloc(sizeof(struct conn_t) * 1);
     clients->len = 1;
     clients->trie = trie_new();
     
-    strcpy(clients->clients[0].allowed_ips, "10.69.0.2/32");
+    res = cidr_parse("10.69.0.2/32", &clients->clients[0].allowed_ips);
+    if (res == -1) {
+        // TODO: handle this error
+        exit(1);
+    }
 
-    struct sockaddr_in vpn_addr;
-    uint32_t mask;
-    cidr_parse(clients->clients[0].allowed_ips, (struct sockaddr*) &vpn_addr, &mask);
     clients->clients[0].id = 0;
     clients->clients[0].connected = false;
-    trie_map(clients->trie, vpn_addr.sin_addr.s_addr, mask, &clients->clients[0]);
+    trie_map(clients->trie, clients->clients[0].allowed_ips, &clients->clients[0]);
 }
 
-void clients_connect(struct clients_t *clients, uint32_t id, const struct sockaddr *sa) {
+void clients_connect(struct clients_t *clients, uint32_t id, const union vpn_sockaddr_t *sa) {
     // TODO: Make this safe and replace incrementing ids
     struct conn_t *client = &clients->clients[id];
     client->connected = true;
     memcpy(&client->udp_addr, sa, sizeof(struct sockaddr));
 
-    if (sa->sa_family != AF_INET) {
+    if (sa->s4.sin_family != AF_INET) {
         // struct sockaddr_in *sa4 = (struct sockaddr_in*) sa;
         fprintf(stderr, "ipv6 is currently unsupported\n");
     }
@@ -109,7 +112,7 @@ static void read_tunnel(uv_poll_t *handle, int status, int events) {
 
             *data = client->id;
 
-            if (uv_udp_send(send_req, vpn->handle, &buf, 1, &client->udp_addr, socket_sent) < 0) {
+            if (uv_udp_send(send_req, vpn->handle, &buf, 1, &client->udp_addr.sa, socket_sent) < 0) {
                 fprintf(stderr, "error sending to client, %s\n", uv_strerror(res));
             }
         }
@@ -119,7 +122,7 @@ static void read_tunnel(uv_poll_t *handle, int status, int events) {
 
         *data = vpn->server.id;
 
-        if (uv_udp_send(send_req, vpn->handle, &buf, 1, &vpn->server.udp_addr, socket_sent) < 0) {
+        if (uv_udp_send(send_req, vpn->handle, &buf, 1, &vpn->server.udp_addr.sa, socket_sent) < 0) {
             fprintf(stderr, "error sending to server, %s\n", uv_strerror(res));
         }
     }
@@ -154,7 +157,7 @@ static void read_socket(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, co
 
         if (!vpn->clients.clients[id].connected) {
             char buf[256];
-            clients_connect(&vpn->clients, id, addr);
+            clients_connect(&vpn->clients, id, (union vpn_sockaddr_t*) addr);
             uv_ip4_name((struct sockaddr_in*) addr, buf, 256); 
             printf("new client (%d): %s\n", id, buf);
         }
@@ -165,16 +168,11 @@ ret:
     free(buf->base);
 }
 
-int create_tun(uv_loop_t *loop, struct vpn_t *vpn, struct tun_t *tun, char *ip) {
+int create_tun(uv_loop_t *loop, struct vpn_t *vpn, struct tun_t *tun, const struct vpn_addrrange_t allowed_ips) {
     if (tun_init(loop, tun) == -1) {
         return -1;
     }
-    if (tun_up(tun) == -1) {
-        return -1;
-    }
-    if (tun_addr(tun, ip) == -1) {
-        return -1;
-    }
+
     tun->uv_handle.data = vpn;
 
     uv_poll_start(&tun->uv_handle, UV_READABLE, read_tunnel);
@@ -195,7 +193,7 @@ static int start_server(struct config_t config) {
     };
     clients_init(&vpn.clients);
 
-    if (create_tun(loop, &vpn, &tun, config.ip) == -1) {
+    if (create_tun(loop, &vpn, &tun, config.addr) == -1) {
         return -1;
     }
 
@@ -232,12 +230,12 @@ static int start_client(struct config_t config) {
         .handle = &udp_sock,
         .server = {
             .id = 0,
-            .udp_addr = *((struct sockaddr*) &config.addr)
+            .udp_addr = config.listen_addr,
         },
         .config = config
     };
 
-    if (create_tun(loop, &vpn, &tun, config.ip) == -1) {
+    if (create_tun(loop, &vpn, &tun, config.addr) == -1) {
         return -1;
     }
 
