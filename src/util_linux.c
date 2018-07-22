@@ -1,5 +1,6 @@
 #include "util.h"
 
+#include <ctype.h>
 #include <string.h>
 #include <linux/if.h>
 #include <uv.h>
@@ -18,10 +19,14 @@ bool sockaddr_cmp(const struct sockaddr *a, const struct sockaddr *b) {
 
 int cidr_parse(char *cidr, struct vpn_addrrange_t *range) {
     int res;
+    char *mask_str, *endptr;
 
-    char *mask_str = strtok(cidr, "/");
-    range->mask = strtol(mask_str, NULL, 10);
-    if (errno != 0) {
+    mask_str = strchr(cidr, '/');
+    *mask_str = '\0';
+    mask_str++;
+
+    range->mask = strtol(mask_str, &endptr, 10);
+    if (errno != 0 || (*endptr != '\0' && !isspace(*endptr))) {
         fprintf(stderr, "invalid cidr specified\n");
         return -1;
     }

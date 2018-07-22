@@ -103,8 +103,10 @@ static int parse_config(struct config_t *config, enum parse_state_t state, char 
                     return -1;
                 }
             } else if (KEY_MATCHES("Address")) {
-                res = cidr_parse(value, &config->addr);
-            } else if (KEY_MATCHES("Listen")){
+                if ((res = cidr_parse(value, &config->addr)) == -1) {
+                    return -1;
+                }
+            } else if (KEY_MATCHES("Listen")) {
                 char *endptr, *cport = strchr(value, ':');
                 uint16_t port;
 
@@ -114,7 +116,7 @@ static int parse_config(struct config_t *config, enum parse_state_t state, char 
                 *cport = '\0';
                 cport++;
 
-                port = strtol(value, &endptr, 10);
+                port = strtol(cport, &endptr, 10);
                 if (errno != 0 || (*endptr != '\0' && !isspace(*endptr))) {
                     goto listen_err;
                 }
